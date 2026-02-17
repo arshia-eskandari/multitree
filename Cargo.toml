@@ -1,8 +1,13 @@
 [package]
-name = "worktree"
+name = "multitree"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "A small CLI tool to manage Git worktrees"
+repository = "https://github.com/<your-user>/<your-repo>"
+readme = "README.md"
+keywords = ["git", "worktree", "cli", "developer-tools"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 clap = { version = "4.5.53", features = ["derive"] }
-tokio = "1.48.0"
