@@ -1,3 +1,4 @@
+mod config;
 use clap::{Parser, Subcommand};
 use std::fs;
 use std::io;

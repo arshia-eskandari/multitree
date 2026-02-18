@@ -11,3 +11,6 @@ categories = ["command-line-utilities"]
 
 [dependencies]
 clap = { version = "4.5.53", features = ["derive"] }
+directories = "6.0.0"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
