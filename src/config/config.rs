@@ -1,6 +1,5 @@
 use super::config_file::{ConfigFile, Saved, Unsaved};
 use directories::{BaseDirs, ProjectDirs};
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Default)]
@@ -56,7 +55,7 @@ impl Config<Missing> {
         let config_file: ConfigFile<Unsaved> =
             toml::from_str(&contents).expect("failed to parse Config.toml");
 
-        let config_file = config_file.save(config_file_path);
+        let config_file = config_file.save(&config_file_path);
         Config::<Created> {
             self_dir_path: Created(self_dir_path),
             file: Some(config_file),
@@ -69,8 +68,8 @@ impl Config<Created> {
         self.file.as_ref().unwrap().worktrees_dir.clone()
     }
 
-    pub fn add_worktrees_dir_path(&mut self, path: PathBuf) {
-        let config_file = self.file.as_mut().unwrap();
+    pub fn add_worktrees_dir_path(&mut self, path: &PathBuf) {
+        let mut config_file = self.file.take().unwrap();
         let path_str = path.to_str().unwrap().to_string();
 
         if config_file.all_directories.contains(&path_str) {
@@ -79,10 +78,12 @@ impl Config<Created> {
         }
 
         config_file.all_directories.push(path_str.clone());
+        let config_file = config_file.write().save(&self.self_dir_path.0);
+        self.file = Some(config_file);
     }
 
-    pub fn change_worktrees_dir_path(&mut self, path: PathBuf) {
-        let config_file = self.file.as_mut().unwrap();
+    pub fn change_worktrees_dir_path(&mut self, path: &PathBuf) {
+        let mut config_file = self.file.take().unwrap();
         let path_str = path.to_str().unwrap().to_string();
 
         if !config_file.all_directories.contains(&path_str) {
@@ -91,10 +92,12 @@ impl Config<Created> {
         }
 
         config_file.worktrees_dir = Some(path_str);
+        let config_file = config_file.write().save(&self.self_dir_path.0);
+        self.file = Some(config_file);
     }
 
-    pub fn remove_worktrees_dir_path(&mut self, path: PathBuf) {
-        let config_file = self.file.as_mut().unwrap();
+    pub fn remove_worktrees_dir_path(&mut self, path: &PathBuf) {
+        let mut config_file = self.file.take().unwrap();
         let path_str = path.to_str().unwrap().to_string();
         let index = config_file
             .all_directories
@@ -109,5 +112,7 @@ impl Config<Created> {
                 println!("path does not exist")
             }
         }
+        let config_file = config_file.write().save(&self.self_dir_path.0);
+        self.file = Some(config_file);
     }
 }

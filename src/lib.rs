@@ -1,34 +1,37 @@
 mod config;
 use clap::{Parser, Subcommand};
-use config::config::Config;
-use std::fs;
+use config::config::{Config, Created};
 use std::io;
 use std::path::PathBuf;
 use std::process::Command;
 
 static WORKTREES_PATH: &str = "~/Code/worktrees";
 
-pub struct MultiTree;
+pub struct MultiTree {
+    config: Config<Created>,
+}
 
 impl Default for MultiTree {
     fn default() -> Self {
-        Self::new()
+        let mut config = Config::default().create_config_path();
+        let worktrees_dir_path = config.get_worktrees_current_dir_path_string();
+        if worktrees_dir_path.is_none() {
+            let worktrees_path_buf = PathBuf::from(WORKTREES_PATH);
+            config.add_worktrees_dir_path(&worktrees_path_buf);
+            config.change_worktrees_dir_path(&worktrees_path_buf);
+        }
+        Self::new(config)
     }
 }
 
 impl MultiTree {
-    pub fn new() -> Self {
-        Self
+    pub fn new(config: Config<Created>) -> Self {
+        Self { config }
     }
 
     pub fn add_worktree(&self, name: String) {
-        Self::make_worktrees_dir();
-        let path = Self::worktree_path(&name);
-
-        if path.exists() {
-            eprintln!("❌ Worktree already exists at {}", path.display());
-            return;
-        }
+        let path = PathBuf::from(&self.config.get_worktrees_current_dir_path_string().unwrap())
+            .join(&name);
 
         let repo_root = match self.git_root() {
             Ok(p) => p,
@@ -59,12 +62,8 @@ impl MultiTree {
     }
 
     pub fn remove_worktree(&self, name: String) {
-        let path = Self::worktree_path(&name);
-
-        if !path.exists() {
-            eprintln!("❌ Worktree '{}' does not exist", name);
-            return;
-        }
+        let path = PathBuf::from(&self.config.get_worktrees_current_dir_path_string().unwrap())
+            .join(&name);
 
         println!("🗑️ Removing worktree:");
         println!("   name: {}", name);
@@ -89,12 +88,8 @@ impl MultiTree {
     }
 
     pub fn track_worktree(&self, name: String) {
-        let path = Self::worktree_path(&name);
-
-        if !path.exists() {
-            eprintln!("❌ Worktree '{}' not found locally", name);
-            return;
-        }
+        let path = PathBuf::from(&self.config.get_worktrees_current_dir_path_string().unwrap())
+            .join(&name);
 
         println!("📂 Tracking worktree:");
         println!("   name: {}", name);
@@ -117,28 +112,6 @@ impl MultiTree {
             name,
             path.display()
         );
-    }
-
-    fn make_worktrees_dir() {
-        let base = Self::expand_home(WORKTREES_PATH);
-
-        if let Err(e) = fs::create_dir_all(&base) {
-            eprintln!("❌ Failed to create worktrees directory: {e}");
-        }
-    }
-
-    fn worktree_path(name: &str) -> PathBuf {
-        let base = Self::expand_home(WORKTREES_PATH);
-        base.join(name)
-    }
-
-    fn expand_home(path: &str) -> PathBuf {
-        if let Some(stripped) = path.strip_prefix("~/")
-            && let Some(home) = std::env::var_os("HOME")
-        {
-            return PathBuf::from(home).join(stripped);
-        }
-        PathBuf::from(path)
     }
 
     fn git_root(&self) -> io::Result<PathBuf> {
@@ -188,13 +161,8 @@ enum Commands {
 }
 
 pub fn run_multitree() {
-    let multitree = MultiTree::new();
+    let multitree = MultiTree::default();
     let multitree_cli = Cli::parse();
-    let mut config = Config::default().create_config_path();
-    if config.get_worktrees_current_dir_path_string().is_none() {
-        let worktrees_path_buf = PathBuf::from(WORKTREES_PATH);
-        config.add_worktrees_dir_path(worktrees_path_buf);
-    }
 
     match multitree_cli.command {
         Commands::Add { name } => multitree.add_worktree(name),
