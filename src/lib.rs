@@ -1,5 +1,6 @@
 mod config;
 use clap::{Parser, Subcommand};
+use config::config::Config;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
@@ -189,6 +190,11 @@ enum Commands {
 pub fn run_multitree() {
     let multitree = MultiTree::new();
     let multitree_cli = Cli::parse();
+    let mut config = Config::default().create_config_path();
+    if config.get_worktrees_current_dir_path_string().is_none() {
+        let worktrees_path_buf = PathBuf::from(WORKTREES_PATH);
+        config.add_worktrees_dir_path(worktrees_path_buf);
+    }
 
     match multitree_cli.command {
         Commands::Add { name } => multitree.add_worktree(name),

@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Default)]
-struct Missing;
-struct Created(PathBuf);
+pub struct Missing;
+pub struct Created(PathBuf);
 
 fn config_dir() -> PathBuf {
     let proj = ProjectDirs::from("io", "multitree", "multitree")
@@ -19,7 +19,7 @@ fn default_multitree_dir() -> PathBuf {
     base.home_dir().to_path_buf()
 }
 
-struct Config<T> {
+pub struct Config<T> {
     self_dir_path: T,
     file: Option<ConfigFile<Saved>>,
 }
@@ -65,7 +65,11 @@ impl Config<Missing> {
 }
 
 impl Config<Created> {
-    fn change_dir_path(&mut self, path: PathBuf) {
+    pub fn get_worktrees_current_dir_path_string(&self) -> Option<String> {
+        self.file.as_ref().unwrap().worktrees_dir.clone()
+    }
+
+    pub fn add_worktrees_dir_path(&mut self, path: PathBuf) {
         let config_file = self.file.as_mut().unwrap();
         let path_str = path.to_str().unwrap().to_string();
 
@@ -75,10 +79,21 @@ impl Config<Created> {
         }
 
         config_file.all_directories.push(path_str.clone());
+    }
+
+    pub fn change_worktrees_dir_path(&mut self, path: PathBuf) {
+        let config_file = self.file.as_mut().unwrap();
+        let path_str = path.to_str().unwrap().to_string();
+
+        if !config_file.all_directories.contains(&path_str) {
+            println!("path does not exist");
+            return;
+        }
+
         config_file.worktrees_dir = Some(path_str);
     }
 
-    fn remove_dir_path(&mut self, path: PathBuf) {
+    pub fn remove_worktrees_dir_path(&mut self, path: PathBuf) {
         let config_file = self.file.as_mut().unwrap();
         let path_str = path.to_str().unwrap().to_string();
         let index = config_file
