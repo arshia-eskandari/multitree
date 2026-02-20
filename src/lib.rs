@@ -1,6 +1,7 @@
 mod config;
 use clap::{Parser, Subcommand};
 use config::config::{Config, Created};
+use directories::BaseDirs;
 use std::io;
 use std::path::PathBuf;
 use std::process::Command;
@@ -16,7 +17,7 @@ impl Default for MultiTree {
         let mut config = Config::default().create_config_path();
         let worktrees_dir_path = config.get_worktrees_current_dir_path_string();
         if worktrees_dir_path.is_none() {
-            let worktrees_path_buf = PathBuf::from(WORKTREES_PATH);
+            let worktrees_path_buf = expand_tilde(WORKTREES_PATH);
             config.add_worktrees_dir_path(&worktrees_path_buf);
             config.change_worktrees_dir_path(&worktrees_path_buf);
         }
@@ -169,4 +170,15 @@ pub fn run_multitree() {
         Commands::Track { name } => multitree.track_worktree(name),
         Commands::Remove { name } => multitree.remove_worktree(name),
     }
+}
+
+fn expand_tilde(s: &str) -> PathBuf {
+    if let Some(rest) = s.strip_prefix("~/") {
+        let home = BaseDirs::new()
+            .expect("no home dir")
+            .home_dir()
+            .to_path_buf();
+        return home.join(rest);
+    }
+    PathBuf::from(s)
 }

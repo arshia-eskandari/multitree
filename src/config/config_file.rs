@@ -1,4 +1,4 @@
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::path::PathBuf;
 
 #[derive(Default)]
@@ -7,8 +7,13 @@ pub struct Saved;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ConfigFile<T> {
-    #[serde(deserialize_with = "empty_string_as_none")]
+    #[serde(
+        default,
+        deserialize_with = "empty_string_as_none",
+        serialize_with = "none_as_empty_string"
+    )]
     pub worktrees_dir: Option<String>,
+    #[serde(default)]
     pub all_directories: Vec<String>,
     #[serde(skip)]
     _status: T,
@@ -24,6 +29,16 @@ where
         Some(s) if s.trim().is_empty() => None,
         other => other,
     })
+}
+
+fn none_as_empty_string<S>(value: &Option<String>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match value {
+        Some(s) => serializer.serialize_str(s),
+        None => serializer.serialize_str(""),
+    }
 }
 
 impl ConfigFile<Unsaved> {

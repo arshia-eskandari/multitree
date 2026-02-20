@@ -19,14 +19,14 @@ fn default_multitree_dir() -> PathBuf {
 }
 
 pub struct Config<T> {
-    self_dir_path: T,
+    self_file_path: T,
     file: Option<ConfigFile<Saved>>,
 }
 
 impl<T: Default> Default for Config<T> {
     fn default() -> Self {
         Self {
-            self_dir_path: T::default(),
+            self_file_path: T::default(),
             file: None,
         }
     }
@@ -57,7 +57,7 @@ impl Config<Missing> {
 
         let config_file = config_file.save(&config_file_path);
         Config::<Created> {
-            self_dir_path: Created(self_dir_path),
+            self_file_path: Created(config_file_path),
             file: Some(config_file),
         }
     }
@@ -78,7 +78,7 @@ impl Config<Created> {
         }
 
         config_file.all_directories.push(path_str.clone());
-        let config_file = config_file.write().save(&self.self_dir_path.0);
+        let config_file = config_file.write().save(&self.self_file_path.0);
         self.file = Some(config_file);
     }
 
@@ -92,7 +92,7 @@ impl Config<Created> {
         }
 
         config_file.worktrees_dir = Some(path_str);
-        let config_file = config_file.write().save(&self.self_dir_path.0);
+        let config_file = config_file.write().save(&self.self_file_path.0);
         self.file = Some(config_file);
     }
 
@@ -112,7 +112,7 @@ impl Config<Created> {
                 println!("path does not exist")
             }
         }
-        let config_file = config_file.write().save(&self.self_dir_path.0);
+        let config_file = config_file.write().save(&self.self_file_path.0);
         self.file = Some(config_file);
     }
 }
