@@ -1,5 +1,7 @@
-use super::config_file::{ConfigFile, Saved, Unsaved};
-use directories::{BaseDirs, ProjectDirs};
+use super::config_file::{
+    CleanConfig, ConfigFile, PathConfig, PathResolution, Saved, UiConfig, Unsaved,
+};
+use directories::ProjectDirs;
 use std::path::PathBuf;
 
 #[derive(Default)]
@@ -11,11 +13,6 @@ fn config_dir() -> PathBuf {
         .expect("could not determine config directory");
 
     proj.config_dir().to_path_buf()
-}
-
-fn default_multitree_dir() -> PathBuf {
-    let base = BaseDirs::new().expect("Could not determine base directories");
-    base.home_dir().to_path_buf()
 }
 
 pub struct Config<T> {
@@ -43,8 +40,20 @@ impl Config<Missing> {
             std::fs::write(
                 &config_file_path,
                 r#"
-                    worktrees_dir = ""
-                    all_directories = []
+                    default_base_branch = "main"
+
+                    [path]
+                    resolution = "repo_parent"
+                    custom_base = ""
+
+                    [clean]
+                    auto_fetch = true
+                    require_merged = true
+                    delete_local_branch = false
+
+                    [ui]
+                    preferred_shell = ""
+                    confirm_before_remove = true
                 "#,
             )
             .expect("write new config file");
@@ -64,54 +73,78 @@ impl Config<Missing> {
 }
 
 impl Config<Created> {
-    pub fn get_worktrees_current_dir_path_string(&self) -> Option<String> {
-        self.file.as_ref().unwrap().worktrees_dir.clone()
+    pub fn config_path(&self) -> &PathBuf {
+        &self.self_file_path.0
     }
 
-    pub fn add_worktrees_dir_path(&mut self, path: &PathBuf) {
+    pub fn default_base_branch(&self) -> &str {
+        &self.file.as_ref().unwrap().default_base_branch
+    }
+
+    pub fn path_config(&self) -> &PathConfig {
+        &self.file.as_ref().unwrap().path
+    }
+
+    pub fn clean_config(&self) -> &CleanConfig {
+        &self.file.as_ref().unwrap().clean
+    }
+
+    pub fn ui_config(&self) -> &UiConfig {
+        &self.file.as_ref().unwrap().ui
+    }
+
+    pub fn set_default_base_branch(&mut self, branch: String) {
         let mut config_file = self.file.take().unwrap();
-        let path_str = path.to_str().unwrap().to_string();
-
-        if config_file.all_directories.contains(&path_str) {
-            println!("path already exists");
-            return;
-        }
-
-        config_file.all_directories.push(path_str.clone());
+        config_file.default_base_branch = branch;
         let config_file = config_file.write().save(&self.self_file_path.0);
         self.file = Some(config_file);
     }
 
-    pub fn change_worktrees_dir_path(&mut self, path: &PathBuf) {
+    pub fn set_path_resolution(&mut self, resolution: PathResolution) {
         let mut config_file = self.file.take().unwrap();
-        let path_str = path.to_str().unwrap().to_string();
-
-        if !config_file.all_directories.contains(&path_str) {
-            println!("path does not exist");
-            return;
-        }
-
-        config_file.worktrees_dir = Some(path_str);
+        config_file.path.resolution = resolution;
         let config_file = config_file.write().save(&self.self_file_path.0);
         self.file = Some(config_file);
     }
 
-    pub fn remove_worktrees_dir_path(&mut self, path: &PathBuf) {
+    pub fn set_custom_base(&mut self, custom_base: String) {
         let mut config_file = self.file.take().unwrap();
-        let path_str = path.to_str().unwrap().to_string();
-        let index = config_file
-            .all_directories
-            .iter()
-            .position(|x| x == &path_str);
+        config_file.path.custom_base = custom_base;
+        let config_file = config_file.write().save(&self.self_file_path.0);
+        self.file = Some(config_file);
+    }
 
-        match index {
-            Some(i) => {
-                config_file.all_directories.remove(i);
-            }
-            None => {
-                println!("path does not exist")
-            }
-        }
+    pub fn set_clean_auto_fetch(&mut self, auto_fetch: bool) {
+        let mut config_file = self.file.take().unwrap();
+        config_file.clean.auto_fetch = auto_fetch;
+        let config_file = config_file.write().save(&self.self_file_path.0);
+        self.file = Some(config_file);
+    }
+
+    pub fn set_clean_require_merged(&mut self, require_merged: bool) {
+        let mut config_file = self.file.take().unwrap();
+        config_file.clean.require_merged = require_merged;
+        let config_file = config_file.write().save(&self.self_file_path.0);
+        self.file = Some(config_file);
+    }
+
+    pub fn set_clean_delete_local_branch(&mut self, delete_local_branch: bool) {
+        let mut config_file = self.file.take().unwrap();
+        config_file.clean.delete_local_branch = delete_local_branch;
+        let config_file = config_file.write().save(&self.self_file_path.0);
+        self.file = Some(config_file);
+    }
+
+    pub fn set_preferred_shell(&mut self, preferred_shell: String) {
+        let mut config_file = self.file.take().unwrap();
+        config_file.ui.preferred_shell = preferred_shell;
+        let config_file = config_file.write().save(&self.self_file_path.0);
+        self.file = Some(config_file);
+    }
+
+    pub fn set_confirm_before_remove(&mut self, confirm_before_remove: bool) {
+        let mut config_file = self.file.take().unwrap();
+        config_file.ui.confirm_before_remove = confirm_before_remove;
         let config_file = config_file.write().save(&self.self_file_path.0);
         self.file = Some(config_file);
     }

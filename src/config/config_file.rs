@@ -1,61 +1,118 @@
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Default)]
 pub struct Unsaved;
 pub struct Saved;
 
+fn default_base_branch() -> String {
+    "main".to_string()
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+pub enum PathResolution {
+    RepoParent,
+    RepoRoot,
+    Custom,
+}
+
+impl Default for PathResolution {
+    fn default() -> Self {
+        PathResolution::RepoParent
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct PathConfig {
+    #[serde(default)]
+    pub resolution: PathResolution,
+    #[serde(default)]
+    pub custom_base: String,
+}
+
+impl Default for PathConfig {
+    fn default() -> Self {
+        Self {
+            resolution: PathResolution::RepoParent,
+            custom_base: String::new(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CleanConfig {
+    #[serde(default = "default_true")]
+    pub auto_fetch: bool,
+    #[serde(default = "default_true")]
+    pub require_merged: bool,
+    #[serde(default)]
+    pub delete_local_branch: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+impl Default for CleanConfig {
+    fn default() -> Self {
+        Self {
+            auto_fetch: true,
+            require_merged: true,
+            delete_local_branch: false,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct UiConfig {
+    #[serde(default)]
+    pub preferred_shell: String,
+    #[serde(default = "default_true")]
+    pub confirm_before_remove: bool,
+}
+
+impl Default for UiConfig {
+    fn default() -> Self {
+        Self {
+            preferred_shell: String::new(),
+            confirm_before_remove: true,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ConfigFile<T> {
-    #[serde(
-        default,
-        deserialize_with = "empty_string_as_none",
-        serialize_with = "none_as_empty_string"
-    )]
-    pub worktrees_dir: Option<String>,
+    #[serde(default = "default_base_branch")]
+    pub default_base_branch: String,
     #[serde(default)]
-    pub all_directories: Vec<String>,
+    pub path: PathConfig,
+    #[serde(default)]
+    pub clean: CleanConfig,
+    #[serde(default)]
+    pub ui: UiConfig,
     #[serde(skip)]
     _status: T,
-}
-
-fn empty_string_as_none<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let opt = Option::<String>::deserialize(deserializer)?;
-
-    Ok(match opt {
-        Some(s) if s.trim().is_empty() => None,
-        other => other,
-    })
-}
-
-fn none_as_empty_string<S>(value: &Option<String>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    match value {
-        Some(s) => serializer.serialize_str(s),
-        None => serializer.serialize_str(""),
-    }
 }
 
 impl ConfigFile<Unsaved> {
     pub fn save(self, path: &PathBuf) -> ConfigFile<Saved> {
         let toml_str = toml::to_string_pretty(&self).unwrap();
-
         std::fs::write(path, toml_str).expect("could not write to Config.toml");
 
         let ConfigFile {
-            worktrees_dir,
-            all_directories,
+            default_base_branch,
+            path,
+            clean,
+            ui,
             ..
         } = self;
 
         ConfigFile {
-            worktrees_dir,
-            all_directories,
+            default_base_branch,
+            path,
+            clean,
+            ui,
             _status: Saved,
         }
     }
@@ -64,13 +121,18 @@ impl ConfigFile<Unsaved> {
 impl ConfigFile<Saved> {
     pub fn write(self) -> ConfigFile<Unsaved> {
         let ConfigFile {
-            worktrees_dir,
-            all_directories,
+            default_base_branch,
+            path,
+            clean,
+            ui,
             ..
         } = self;
+
         ConfigFile {
-            worktrees_dir,
-            all_directories,
+            default_base_branch,
+            path,
+            clean,
+            ui,
             _status: Unsaved,
         }
     }
