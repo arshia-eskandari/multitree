@@ -23,18 +23,13 @@ fn default_base_branch() -> String {
     "main".to_string()
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum PathResolution {
+    #[default]
     RepoParent,
     RepoRoot,
     Custom,
-}
-
-impl Default for PathResolution {
-    fn default() -> Self {
-        PathResolution::RepoParent
-    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
