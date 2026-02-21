@@ -33,6 +33,7 @@ fn init_repo() -> (TempDir, PathBuf) {
     git(&repo, &["init"]);
     git(&repo, &["config", "user.email", "test@example.com"]);
     git(&repo, &["config", "user.name", "Test User"]);
+    git(&repo, &["checkout", "-b", "main"]);
 
     fs::write(repo.join("README.md"), "hello\n").expect("failed to write file");
     git(&repo, &["add", "."]);
