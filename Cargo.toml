@@ -10,7 +10,9 @@ keywords = ["git", "worktree", "cli", "developer-tools"]
 categories = ["command-line-utilities"]
 
 [dependencies]
+anyhow = "1.0.102"
 clap = { version = "4.5.53", features = ["derive"] }
 directories = "6.0.0"
 serde = { version = "1", features = ["derive"] }
-toml = "0.8"
+thiserror = "2.0.18"
+toml = "1.0.3"

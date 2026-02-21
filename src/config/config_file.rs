@@ -1,9 +1,23 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use thiserror::Error;
 
 #[derive(Default)]
 pub struct Unsaved;
 pub struct Saved;
+
+#[derive(Debug, Error)]
+pub enum ConfigFileError {
+    #[error("failed to serialize Config.toml")]
+    SerializeToml(#[from] toml::ser::Error),
+    #[error("failed to write config file at `{path}`")]
+    WriteConfig {
+        path: String,
+        #[source]
+        source: std::io::Error,
+    },
+}
 
 fn default_base_branch() -> String {
     "main".to_string()
@@ -96,9 +110,12 @@ pub struct ConfigFile<T> {
 }
 
 impl ConfigFile<Unsaved> {
-    pub fn save(self, path: &PathBuf) -> ConfigFile<Saved> {
-        let toml_str = toml::to_string_pretty(&self).unwrap();
-        std::fs::write(path, toml_str).expect("could not write to Config.toml");
+    pub fn save(self, path: &PathBuf) -> Result<ConfigFile<Saved>, ConfigFileError> {
+        let toml_str = toml::to_string_pretty(&self)?;
+        std::fs::write(path, toml_str).map_err(|source| ConfigFileError::WriteConfig {
+            path: path.display().to_string(),
+            source,
+        })?;
 
         let ConfigFile {
             default_base_branch,
@@ -108,13 +125,13 @@ impl ConfigFile<Unsaved> {
             ..
         } = self;
 
-        ConfigFile {
+        Ok(ConfigFile {
             default_base_branch,
             path,
             clean,
             ui,
             _status: Saved,
-        }
+        })
     }
 }
 
